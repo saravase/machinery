@@ -40,6 +40,7 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 		Addrs:    addrs,
 		DB:       db,
 		Password: password,
+		TLSConfig: cnf.TLSConfig,
 	}
 	if cnf.Redis != nil {
 		ropt.MasterName = cnf.Redis.MasterName
