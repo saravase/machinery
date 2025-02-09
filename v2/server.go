@@ -327,7 +327,7 @@ func (server *Server) RegisterPeriodicTask(spec, name string, signature *tasks.S
 	//check spec
 	schedule, err := cron.ParseStandard(spec)
 	if err != nil {
-		fmt.Println("err", err)
+		log.ERROR.Println("err", err)
 		return err
 	}
 
@@ -335,14 +335,14 @@ func (server *Server) RegisterPeriodicTask(spec, name string, signature *tasks.S
 		//get lock
 		err := server.lock.LockWithRetries(utils.GetLockName(name, spec), schedule.Next(time.Now()).UnixNano()-1)
 		if err != nil {
-			fmt.Println("LockWithRetries error: ", err)
+			log.ERROR.Println("LockWithRetries error: ", err)
 			return
 		}
 
 		//send task
 		_, err = server.SendTask(tasks.CopySignature(signature))
 		if err != nil {
-			fmt.Println("SendTask error: ", err)
+			log.ERROR.Println("SendTask error: ", err)
 			log.ERROR.Printf("periodic task failed. task name is: %s. error is %s", name, err.Error())
 		}
 	}

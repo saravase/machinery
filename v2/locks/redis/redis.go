@@ -3,7 +3,6 @@ package redis
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +10,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/RichardKnop/machinery/v2/config"
+	"github.com/RichardKnop/machinery/v2/log"
 )
 
 var (
@@ -78,34 +78,36 @@ func (r Lock) Lock(key string, unixTsToExpireNs int64) error {
 	expiration := time.Duration(unixTsToExpireNs + 1 - now)
 	ctx := context.Background()
 
-	fmt.Printf("redis client: %+v\n", r.rclient)
+	log.INFO.Printf("redis client: %+v\n", r.rclient)
 
 	success, err := r.rclient.SetNX(ctx, key, unixTsToExpireNs, expiration).Result()
 	if err != nil {
-		fmt.Println("SetNX error: ", err)
+		log.ERROR.Println("SetNX error: ", err)
 		return err
 	}
 
 	if !success {
 		v, err := r.rclient.Get(ctx, key).Result()
 		if err != nil {
-			fmt.Println("Get error: ", err)
+			log.ERROR.Println("Get error: ", err)
 			return err
 		}
 		timeout, err := strconv.Atoi(v)
 		if err != nil {
+			log.ERROR.Println("Atoi error: ", err)
 			return err
 		}
 
 		if timeout != 0 && now > int64(timeout) {
 			newTimeout, err := r.rclient.GetSet(ctx, key, unixTsToExpireNs).Result()
 			if err != nil {
-				fmt.Println("GetSet error: ", err)
+				log.ERROR.Println("GetSet error: ", err)
 				return err
 			}
 
 			curTimeout, err := strconv.Atoi(newTimeout)
 			if err != nil {
+				log.ERROR.Println("Atoi error: ", err)
 				return err
 			}
 
