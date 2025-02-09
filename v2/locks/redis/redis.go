@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -37,9 +38,9 @@ func New(cnf *config.Config, addrs []string, db, retries int) Lock {
 	}
 
 	ropt := &redis.UniversalOptions{
-		Addrs:    addrs,
-		DB:       db,
-		Password: password,
+		Addrs:     addrs,
+		DB:        db,
+		Password:  password,
 		TLSConfig: cnf.TLSConfig,
 	}
 	if cnf.Redis != nil {
@@ -77,14 +78,18 @@ func (r Lock) Lock(key string, unixTsToExpireNs int64) error {
 	expiration := time.Duration(unixTsToExpireNs + 1 - now)
 	ctx := context.Background()
 
+	fmt.Printf("redis client: %+v\n", r.rclient)
+
 	success, err := r.rclient.SetNX(ctx, key, unixTsToExpireNs, expiration).Result()
 	if err != nil {
+		fmt.Println("SetNX error: ", err)
 		return err
 	}
 
 	if !success {
 		v, err := r.rclient.Get(ctx, key).Result()
 		if err != nil {
+			fmt.Println("Get error: ", err)
 			return err
 		}
 		timeout, err := strconv.Atoi(v)
@@ -95,6 +100,7 @@ func (r Lock) Lock(key string, unixTsToExpireNs int64) error {
 		if timeout != 0 && now > int64(timeout) {
 			newTimeout, err := r.rclient.GetSet(ctx, key, unixTsToExpireNs).Result()
 			if err != nil {
+				fmt.Println("GetSet error: ", err)
 				return err
 			}
 
